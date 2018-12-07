@@ -240,7 +240,6 @@ def convert_single_example(ex_index, example, label_list, max_seq_length,
   tokens_b = None
   if example.text_b:
     tokens_b = tokenizer.tokenize(example.text_b)
-
   if tokens_b:
     # Modifies `tokens_a` and `tokens_b` in place so that the total
     # length is less than the specified length.
@@ -269,6 +268,8 @@ def convert_single_example(ex_index, example, label_list, max_seq_length,
   # For classification tasks, the first vector (corresponding to [CLS]) is
   # used as as the "sentence vector". Note that this only makes sense because
   # the entire model is fine-tuned.
+  print(len(tokens_a))
+  print(len(tokens_b))
   tokens = []
   segment_ids = []
   tokens.append("[CLS]")
@@ -301,7 +302,9 @@ def convert_single_example(ex_index, example, label_list, max_seq_length,
   assert len(input_ids) == max_seq_length
   assert len(input_mask) == max_seq_length
   assert len(segment_ids) == max_seq_length
-
+  print(example)
+  print(example.label)
+  print(label_map)
   label_id = label_map[example.label]
   if ex_index < 5:
     tf.logging.info("*** Example ***")
