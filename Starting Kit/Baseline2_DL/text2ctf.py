@@ -88,7 +88,7 @@ if __name__ == "__main__":
     TextDataToCTF(trainFileName,"TrainData.ctf",False)
     print("Train Data conversion is done")
     TextDataToCTF(validationFileName,"ValidationData.ctf",False)
-    print("Validation Data conversion is done")
+    print("Validation Data conversion is done") 
     TextDataToCTF(EvaluationFileName,"EvaluationData.ctf",True)
     print("Evaluation Data conversion is done")
 

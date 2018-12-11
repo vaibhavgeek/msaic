@@ -1,18 +1,3 @@
-# coding=utf-8
-# Copyright 2018 The Google AI Language Team Authors.
-#
-# Licensed under the Apache License, Version 2.0 (the "License");
-# you may not use this file except in compliance with the License.
-# You may obtain a copy of the License at
-#
-#     http://www.apache.org/licenses/LICENSE-2.0
-#
-# Unless required by applicable law or agreed to in writing, software
-# distributed under the License is distributed on an "AS IS" BASIS,
-# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-# See the License for the specific language governing permissions and
-# limitations under the License.
-"""Extract pre-computed feature vectors from BERT."""
 
 from __future__ import absolute_import
 from __future__ import division
@@ -27,63 +12,14 @@ import modeling
 import tokenization
 import tensorflow as tf
 
-flags = tf.flags
-
-FLAGS = flags.FLAGS
-
-flags.DEFINE_string("input_file", None, "")
-
-flags.DEFINE_string("output_file", None, "")
-
-flags.DEFINE_string("layers", "-1,-2,-3,-4", "")
-
-flags.DEFINE_string(
-    "bert_config_file", None,
-    "The config json file corresponding to the pre-trained BERT model. "
-    "This specifies the model architecture.")
-
-flags.DEFINE_integer(
-    "max_seq_length", 128,
-    "The maximum total input sequence length after WordPiece tokenization. "
-    "Sequences longer than this will be truncated, and sequences shorter "
-    "than this will be padded.")
-
-flags.DEFINE_string(
-    "init_checkpoint", None,
-    "Initial checkpoint (usually from a pre-trained BERT model).")
-
-flags.DEFINE_string("vocab_file", None,
-                    "The vocabulary file that the BERT model was trained on.")
-
-flags.DEFINE_bool(
-    "do_lower_case", True,
-    "Whether to lower case the input text. Should be True for uncased "
-    "models and False for cased models.")
-
-flags.DEFINE_integer("batch_size", 32, "Batch size for predictions.")
-
-flags.DEFINE_bool("use_tpu", False, "Whether to use TPU or GPU/CPU.")
-
-flags.DEFINE_string("master", None,
-                    "If using a TPU, the address of the master.")
-
-flags.DEFINE_integer(
-    "num_tpu_cores", 8,
-    "Only used if `use_tpu` is True. Total number of TPU cores to use.")
-
-flags.DEFINE_bool(
-    "use_one_hot_embeddings", False,
-    "If True, tf.one_hot will be used for embedding lookups, otherwise "
-    "tf.nn.embedding_lookup will be used. On TPUs, this should be True "
-    "since it is much faster.")
-
-
 class InputExample(object):
 
-  def __init__(self, unique_id, text_a, text_b):
+  def __init__(self, unique_id,query_id,query, passage,label):
     self.unique_id = unique_id
-    self.text_a = text_a
-    self.text_b = text_b
+    self.text_a = query
+    self.text_b = passage
+    self.query_id = query_id
+    self.label = label
 
 
 class InputFeatures(object):
@@ -228,24 +164,6 @@ def convert_examples_to_features(examples, seq_length, tokenizer):
       if len(tokens_a) > seq_length - 2:
         tokens_a = tokens_a[0:(seq_length - 2)]
 
-    # The convention in BERT is:
-    # (a) For sequence pairs:
-    #  tokens:   [CLS] is this jack ##son ##ville ? [SEP] no it is not . [SEP]
-    #  type_ids: 0     0  0    0    0     0       0 0     1  1  1  1   1 1
-    # (b) For single sequences:
-    #  tokens:   [CLS] the dog is hairy . [SEP]
-    #  type_ids: 0     0   0   0  0     0 0
-    #
-    # Where "type_ids" are used to indicate whether this is the first
-    # sequence or the second sequence. The embedding vectors for `type=0` and
-    # `type=1` were learned during pre-training and are added to the wordpiece
-    # embedding vector (and position vector). This is not *strictly* necessary
-    # since the [SEP] token unambiguously separates the sequences, but it makes
-    # it easier for the model to learn the concept of sequences.
-    #
-    # For classification tasks, the first vector (corresponding to [CLS]) is
-    # used as as the "sentence vector". Note that this only makes sense because
-    # the entire model is fine-tuned.
     tokens = []
     input_type_ids = []
     tokens.append("[CLS]")
@@ -278,7 +196,6 @@ def convert_examples_to_features(examples, seq_length, tokenizer):
     assert len(input_ids) == seq_length
     assert len(input_mask) == seq_length
     assert len(input_type_ids) == seq_length
-
     if ex_index < 5:
       tf.logging.info("*** Example ***")
       tf.logging.info("unique_id: %s" % (example.unique_id))
@@ -298,14 +215,7 @@ def convert_examples_to_features(examples, seq_length, tokenizer):
             input_type_ids=input_type_ids))
   return features
 
-
 def _truncate_seq_pair(tokens_a, tokens_b, max_length):
-  """Truncates a sequence pair in place to the maximum length."""
-
-  # This is a simple heuristic which will always truncate the longer sequence
-  # one token at a time. This makes more sense than truncating an equal percent
-  # of tokens from each, since if one sequence is very short then each token
-  # that's truncated likely contains more information than a longer sequence.
   while True:
     total_length = len(tokens_a) + len(tokens_b)
     if total_length <= max_length:
@@ -325,67 +235,70 @@ def read_examples(input_file):
       line = tokenization.convert_to_unicode(reader.readline())
       if not line:
         break
-      line = line.strip()
-      text_a = None
-      text_b = None
-      m = re.match(r"^(.*) \|\|\| (.*)$", line)
-      if m is None:
-        text_a = line
-      else:
-        text_a = m.group(1)
-        text_b = m.group(2)
+      line = line.strip().lower().split("\t")
+      query_id,query,passage,label = line[0],line[1],line[2],line[3]
       examples.append(
-          InputExample(unique_id=unique_id, text_a=text_a, text_b=text_b))
+          InputExample(unique_id, query_id, query, passage, label))
       unique_id += 1
   return examples
 
 
-def main(_):
+def main(input_file, bucket):
   tf.logging.set_verbosity(tf.logging.INFO)
+  
+  OUTPUT_DIR = 'gs://{}/bert/models'.format(bucket)
+  tf.gfile.MakeDirs(OUTPUT_DIR)
+  
+  layer_indexes = [int(x) for x in "-1, -2".split(",")]
+  BERT_MODEL = 'uncased_L-12_H-768_A-12' 
+  BERT_PRETRAINED_DIR = 'gs://cloud-tpu-checkpoints/bert/' + BERT_MODEL
 
-  layer_indexes = [int(x) for x in FLAGS.layers.split(",")]
 
-  bert_config = modeling.BertConfig.from_json_file(FLAGS.bert_config_file)
+  bert_config_file = BERT_PRETRAINED_DIR + "/bert_config.json"
+  bert_config = modeling.BertConfig.from_json_file(bert_config_file)
 
+  vocab_file = BERT_PRETRAINED_DIR + "/vocab.txt"
   tokenizer = tokenization.FullTokenizer(
-      vocab_file=FLAGS.vocab_file, do_lower_case=FLAGS.do_lower_case)
+      vocab_file=vocab_file, do_lower_case=True)
 
   is_per_host = tf.contrib.tpu.InputPipelineConfig.PER_HOST_V2
   run_config = tf.contrib.tpu.RunConfig(
-      master=FLAGS.master,
+      master=None,
       tpu_config=tf.contrib.tpu.TPUConfig(
-          num_shards=FLAGS.num_tpu_cores,
+          num_shards=8,
           per_host_input_for_training=is_per_host))
 
-  examples = read_examples(FLAGS.input_file)
+  examples = read_examples(input_file)
 
   features = convert_examples_to_features(
-      examples=examples, seq_length=FLAGS.max_seq_length, tokenizer=tokenizer)
+      examples=examples, seq_length=128, tokenizer=tokenizer)
 
   unique_id_to_feature = {}
   for feature in features:
     unique_id_to_feature[feature.unique_id] = feature
 
+  init_checkpoint = BERT_PRETRAINED_DIR + "/bert_model.ckpt"
   model_fn = model_fn_builder(
       bert_config=bert_config,
-      init_checkpoint=FLAGS.init_checkpoint,
+      init_checkpoint=init_checkpoint,
       layer_indexes=layer_indexes,
-      use_tpu=FLAGS.use_tpu,
-      use_one_hot_embeddings=FLAGS.use_one_hot_embeddings)
+      use_tpu=True,
+      use_one_hot_embeddings=True)
 
   # If TPU is not available, this will fall back to normal Estimator on CPU
   # or GPU.
   estimator = tf.contrib.tpu.TPUEstimator(
-      use_tpu=FLAGS.use_tpu,
+      use_tpu=True,
       model_fn=model_fn,
       config=run_config,
-      predict_batch_size=FLAGS.batch_size)
+      predict_batch_size=8)
 
   input_fn = input_fn_builder(
-      features=features, seq_length=FLAGS.max_seq_length)
+      features=features, seq_length=128)
 
-  with codecs.getwriter("utf-8")(tf.gfile.Open(FLAGS.output_file,
-                                               "w")) as writer:
+  file = os.path.join(OUTPUT_DIR, "dataembedding.json")
+
+  with tf.gfile.GFile(file, "w") as writer:
     for result in estimator.predict(input_fn, yield_single_examples=True):
       unique_id = int(result["unique_id"])
       feature = unique_id_to_feature[unique_id]
@@ -410,10 +323,4 @@ def main(_):
       writer.write(json.dumps(output_json) + "\n")
 
 
-if __name__ == "__main__":
-  flags.mark_flag_as_required("input_file")
-  flags.mark_flag_as_required("vocab_file")
-  flags.mark_flag_as_required("bert_config_file")
-  flags.mark_flag_as_required("init_checkpoint")
-  flags.mark_flag_as_required("output_file")
-  tf.app.run()
+
