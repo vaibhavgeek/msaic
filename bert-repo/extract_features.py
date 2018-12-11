@@ -228,7 +228,6 @@ def _truncate_seq_pair(tokens_a, tokens_b, max_length):
 
 
 def read_examples(input_file):
-  """Read a list of `InputExample`s from an input file."""
   examples = []
   unique_id = 0
   f = open(input_file,"r",encoding="utf-8",errors="ignore")  # Format of the file : query_id \t query \t passage \t label \t passage_id
