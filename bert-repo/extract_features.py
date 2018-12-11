@@ -291,7 +291,8 @@ def main(input_file, bucket):
       use_tpu=True,
       model_fn=model_fn,
       config=run_config,
-      predict_batch_size=8)
+      predict_batch_size=8,
+      train_batch_size=8)
 
   input_fn = input_fn_builder(
       features=features, seq_length=128)
