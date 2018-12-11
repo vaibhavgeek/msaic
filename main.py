@@ -64,6 +64,6 @@ testSet.to_csv("data/validationdata.tsv", sep='\t')
 !git clone https://vaibhavgeek:F1inindia@github.com/vaibhavgeek/msaic.git
 
 import sys 
-sys.path += ["bert-repo"]
+sys.path += ["msaic/bert-repo"]
 import extract_features
-extract_features.main("data/traindata.tsv" , "msaic1")
+extract_features.main("data/traindata.tsv" , "bert-msaic")

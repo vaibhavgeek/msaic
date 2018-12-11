@@ -298,7 +298,6 @@ def main(input_file, bucket):
       features=features, seq_length=128)
 
   file = os.path.join(OUTPUT_DIR, "dataembedding.json")
-
   with tf.gfile.GFile(file, "w") as writer:
     for result in estimator.predict(input_fn, yield_single_examples=True):
       unique_id = int(result["unique_id"])
