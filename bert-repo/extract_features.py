@@ -49,7 +49,7 @@ def input_fn_builder(features, seq_length):
 
   def input_fn(params):
     """The actual input function."""
-    batch_size = params["batch_size"]
+    batch_size = 8
 
     num_examples = len(features)
 
@@ -206,6 +206,7 @@ def convert_examples_to_features(examples, seq_length, tokenizer):
       tf.logging.info(
           "input_type_ids: %s" % " ".join([str(x) for x in input_type_ids]))
 
+
     features.append(
         InputFeatures(
             unique_id=example.unique_id,
@@ -230,16 +231,13 @@ def read_examples(input_file):
   """Read a list of `InputExample`s from an input file."""
   examples = []
   unique_id = 0
-  with tf.gfile.GFile(input_file, "r") as reader:
-    while True:
-      line = tokenization.convert_to_unicode(reader.readline())
-      if not line:
-        break
-      line = line.strip().lower().split("\t")
-      query_id,query,passage,label = line[0],line[1],line[2],line[3]
-      examples.append(
+  f = open(inputfile,"r",encoding="utf-8",errors="ignore")  # Format of the file : query_id \t query \t passage \t label \t passage_id
+  for line in f:
+    line = line.strip().lower().split("\t")
+    query_id,query,passage,label = line[0],line[1],line[2],line[3]
+    examples.append(
           InputExample(unique_id, query_id, query, passage, label))
-      unique_id += 1
+    unique_id += 1
   return examples
 
 
@@ -297,7 +295,9 @@ def main(input_file, bucket):
       features=features, seq_length=128)
 
   file = os.path.join(OUTPUT_DIR, "dataembedding.json")
-  with tf.gfile.GFile(file, "w") as writer:
+
+  with codecs.getwriter("utf-8")(tf.gfile.Open(file,
+                                               "w")) as writer:
     for result in estimator.predict(input_fn, yield_single_examples=True):
       unique_id = int(result["unique_id"])
       feature = unique_id_to_feature[unique_id]
