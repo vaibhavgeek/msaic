@@ -231,7 +231,7 @@ def read_examples(input_file):
   """Read a list of `InputExample`s from an input file."""
   examples = []
   unique_id = 0
-  f = open(inputfile,"r",encoding="utf-8",errors="ignore")  # Format of the file : query_id \t query \t passage \t label \t passage_id
+  f = open(input_file,"r",encoding="utf-8",errors="ignore")  # Format of the file : query_id \t query \t passage \t label \t passage_id
   for line in f:
     line = line.strip().lower().split("\t")
     query_id,query,passage,label = line[0],line[1],line[2],line[3]
