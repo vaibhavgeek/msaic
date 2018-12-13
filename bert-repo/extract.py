@@ -343,7 +343,7 @@ def read_examples(input_file):
 def main(_):
   tf.logging.set_verbosity(tf.logging.INFO)
 
-  OUTPUT_DIR = 'gs://{}/bert/models'.format(bucket)
+  OUTPUT_DIR = 'gs://{}/bert/models'.format("msaic-2")
   tf.gfile.MakeDirs(OUTPUT_DIR)
 
   file = os.path.join(OUTPUT_DIR, "dataembedding.json")
