@@ -49,7 +49,7 @@ def input_fn_builder(features, seq_length):
 
   def input_fn(params):
     """The actual input function."""
-    batch_size = 8
+    batch_size = 32
 
     num_examples = len(features)
 
@@ -280,7 +280,7 @@ def runit(input_file, bucket):
       init_checkpoint=init_checkpoint,
       layer_indexes=layer_indexes,
       use_tpu=True,
-      use_one_hot_embeddings=True)
+      use_one_hot_embeddings=False)
 
   # If TPU is not available, this will fall back to normal Estimator on CPU
   # or GPU.
