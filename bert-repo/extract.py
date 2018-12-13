@@ -343,6 +343,13 @@ def read_examples(input_file):
 def main(_):
   tf.logging.set_verbosity(tf.logging.INFO)
 
+  OUTPUT_DIR = 'gs://{}/bert/models'.format(bucket)
+  tf.gfile.MakeDirs(OUTPUT_DIR)
+
+  file = os.path.join(OUTPUT_DIR, "dataembedding.json")
+
+
+
   layer_indexes = [int(x) for x in FLAGS.layers.split(",")]
 
   bert_config = modeling.BertConfig.from_json_file(FLAGS.bert_config_file)
@@ -384,7 +391,7 @@ def main(_):
   input_fn = input_fn_builder(
       features=features, seq_length=FLAGS.max_seq_length)
 
-  with codecs.getwriter("utf-8")(tf.gfile.Open(FLAGS.output_file,
+  with codecs.getwriter("utf-8")(tf.gfile.Open(file,
                                                "w")) as writer:
     for result in estimator.predict(input_fn, yield_single_examples=True):
       unique_id = int(result["unique_id"])
