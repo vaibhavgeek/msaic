@@ -22,7 +22,7 @@ import codecs
 import collections
 import json
 import re
-
+import os
 import modeling
 import tokenization
 import tensorflow as tf
